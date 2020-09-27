@@ -1,5 +1,6 @@
 const WebSocket = require("ws");
-const fs = require("fs");
+const Message = require("./models/client");
+const Joi = require("joi");
 
 const clients = [];
 const messages = [];
@@ -20,6 +21,7 @@ const wsConnection = (server) => {
       obj.ts = data[2];
       let texto = data[0];
       */
+      /*
       let obj = JSON.parse(message);
       let texto = obj.message;
       fs.access("db.json", fs.constants.F_OK, (err) => {
@@ -42,21 +44,44 @@ const wsConnection = (server) => {
           });
         
       });
-      messages.push(texto);
+      */
 
-      sendMessages();
+      let obj = JSON.parse(message);
+      const schema = Joi.object({
+        message: Joi.string().min(5).required(),
+        author: Joi.string()
+          .pattern(new RegExp("([A-Za-z0-9.-]+[ ][A-Za-z0-9. -]+)"))
+          .required(),
+        ts: Joi.required(),
+      });
+      const { error } = schema.validate(obj);
+      if (error) {
+        console.log(error);
+        res.statusCode = 400;
+        res.send(
+          "No se cumplió alguna condición de autor o mensaje " + error.message
+        );
+      } else {
+        Message.create({
+          message: obj.message,
+          ts: obj.ts,
+          author: obj.author,
+        });
+
+        console.log("enviado " + obj.message);
+        messages.push(obj.message);
+
+        sendMessages();
+      }
     });
   });
 };
 
 const sendMessages = () => {
-
   clients.forEach((client) => {
-    client.send(JSON.stringify(messages))
-    
+    client.send(JSON.stringify(messages));
   });
 };
-
 
 exports.sendMessages = sendMessages;
 exports.wsConnection = wsConnection;

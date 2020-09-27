@@ -1,9 +1,11 @@
-var express = require('express');
+var express = require("express");
 var router = express.Router();
 const ws = require("../wslib");
-let fs = require("fs");
 const Joi = require("joi");
+const Message = require("../models/client");
+const { response } = require("express");
 /* GET home page. */
+/*
 router.get('/', function(req, res, next) {
   res.render('index', { title: 'Express' });
 });
@@ -173,4 +175,82 @@ router.delete('/chat/api/messages/:ts', function(req, res, next){
     
   });
 });
+*/
+router.get("/chat/api/messages", function (req, res, next) {
+  Message.findAll().then((result) => {
+    console.log(result);
+    res.send(result);
+  });
+});
+
+router.get("/chat/api/messages/:ts", function (req, res, next) {
+  Message.findOne({ where: { ts: req.params.ts } }).then((response) => {
+    console.log(response);
+    if (response === null)
+      return res.status(404).send("No se encontro el mensaje");
+    res.send(response);
+  });
+});
+
+router.post("/chat/api/messages", function (req, res, next) {
+  const schema = Joi.object({
+    message: Joi.string().min(5).required(),
+    author: Joi.string()
+      .pattern(new RegExp("([A-Za-z0-9.-]+[ ][A-Za-z0-9. -]+)"))
+      .required(),
+    ts: Joi.required(),
+  });
+  const { error } = schema.validate(req.body);
+  if (error) {
+    console.log(error);
+    res.statusCode = 400;
+    res.send(
+      "No se cumplió alguna condición de autor o mensaje " + error.message
+    );
+  } else {
+    Message.create({
+      message: req.body.message,
+      ts: req.body.ts,
+      author: req.body.author,
+    }).then((response) => {
+      console.log(response);
+      res.send(response);
+    });
+
+    ws.sendMessages();
+  }
+});
+
+router.put("/chat/api/messages/:ts", function (req, res, next) {
+  const schema = Joi.object({
+    message: Joi.string().min(5).required(),
+    author: Joi.string()
+      .pattern(new RegExp("([A-Za-z0-9.-]+[ ][A-Za-z0-9. -]+)"))
+      .required(),
+    ts: Joi.required(),
+  });
+  const { error } = schema.validate(req.body);
+  if (error) {
+    console.log(error);
+    res.statusCode = 400;
+    res.send(
+      "No se cumplió alguna condición de autor o mensaje " + error.message
+    );
+  } else {
+    Message.update(req.body, { where: { ts: req.params.ts } }).then(
+      (response) => {
+        if (response[0] !== 0) res.send({ message: "Mensaje actualizado" });
+        else return res.status(404).send("No se encontró cliente");
+      }
+    );
+  }
+});
+
+router.delete("/chat/api/messages/:ts", function (req, res, next) {
+  Message.destroy({ where: { ts: req.params.ts } }).then((response) => {
+    if (response === 0) res.status(404).send("Mensaje no encontrado");
+    else res.send("Mensaje borrado");
+  });
+});
+
 module.exports = router;

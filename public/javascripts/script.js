@@ -1,4 +1,3 @@
-
 const ws = new WebSocket("ws://localhost:3000");
 let nombreAutor = "";
 
@@ -12,19 +11,17 @@ const renderMessages = (data) => {
 };
 
 const handleSubmit = (evt) => {
-
   evt.preventDefault();
   const message = document.getElementById("message");
   let fecha = new Date();
   let fse = fecha.getTime();
   let obj = {
     message: message.value,
+    ts: fse,
     author: nombreAutor,
-    ts: fse
-  }
+  };
   ws.send(JSON.stringify(obj));
   message.value = "";
-  
 };
 
 const handleAuthorSubmit = (evt) => {
@@ -46,7 +43,6 @@ const handleAuthorSubmit = (evt) => {
     }
   }
 };
-
 
 const nombre = document.getElementById("nombre");
 const bttnAuthor = document.getElementById("bttnAuthor");
